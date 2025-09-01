@@ -22,7 +22,7 @@ export const TodoFooter: React.FC<TodoFooterProps> = ({
 
   return (
     <footer className="p-4 flex items-center justify-between text-sm text-gray-500">
-      <span>
+      <span className="inline-block w-20">
         {activeTodosCount} item{activeTodosCount !== 1 ? 's' : ''} left
       </span>
 
