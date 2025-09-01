@@ -1,98 +1,38 @@
 import { useEffect, useRef } from 'react';
-import { useDrag, useDrop } from 'react-dnd';
 import { Input } from './ui/input';
 import { Button } from './ui/button';
 import { Checkbox } from './ui/checkbox';
-import { X, GripVertical } from 'lucide-react';
-import type { TodoItemProps, DragItem } from '../types';
+import { X } from 'lucide-react';
+import type { EditActions, Todo } from '../types';
 
+export interface TodoItemProps extends EditActions {
+  todo: Todo;
+  onToggle: (id: number) => void;
+  onDelete: (id: number) => void;
+}
 
-const ITEM_TYPE = 'todo';
 export function TodoItem({
   todo,
-  index,
   onToggle,
   onDelete,
-  onEdit,
-  onMove,
   editingId,
   editingText,
-  setEditingId,
   setEditingText,
+  startEdit,
+  cancelEdit,
+  submitEdit,
 }: TodoItemProps) {
   const ref = useRef<HTMLDivElement>(null);
   const editInputRef = useRef<HTMLInputElement>(null);
-
-  const [{ handlerId }, drop] = useDrop({
-    accept: ITEM_TYPE,
-    collect(monitor) {
-      return {
-        handlerId: monitor.getHandlerId(),
-      };
-    },
-    hover(item: DragItem, monitor) {
-      if (!ref.current) {
-        return;
-      }
-      const dragIndex = item.index;
-      const hoverIndex = index;
-
-      if (dragIndex === hoverIndex) {
-        return;
-      }
-
-      const hoverBoundingRect = ref.current?.getBoundingClientRect();
-      const hoverMiddleY = (hoverBoundingRect.bottom - hoverBoundingRect.top) / 2;
-      const clientOffset = monitor.getClientOffset();
-      const hoverClientY = (clientOffset?.y || 0) - hoverBoundingRect.top;
-
-      if (dragIndex < hoverIndex && hoverClientY < hoverMiddleY) {
-        return;
-      }
-
-      if (dragIndex > hoverIndex && hoverClientY > hoverMiddleY) {
-        return;
-      }
-
-      onMove(dragIndex, hoverIndex);
-      item.index = hoverIndex;
-    },
-  });
-
-  const [{ isDragging }, drag, preview] = useDrag({
-    type: ITEM_TYPE,
-    item: () => {
-      return { id: todo.id, index };
-    },
-    collect: (monitor) => ({
-      isDragging: monitor.isDragging(),
-    }),
-  });
-
-  const opacity = isDragging ? 0.4 : 1;
-  preview(drop(ref));
-
-  const handleDoubleClick = () => {
-    if (!todo.completed) {
-      setEditingId(todo.id);
-      setEditingText(todo.text);
-    }
+    const handleDoubleClick = () => {
+    startEdit(todo.id, todo.text);
   };
 
-  const handleEditSubmit = () => {
-    if (editingText.trim() !== '') {
-      onEdit(todo.id, editingText.trim());
-    }
-    setEditingId(null);
-    setEditingText('');
-  };
-
-  const handleEditKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      handleEditSubmit();
-    } else if (e.key === 'Escape') {
-      setEditingId(null);
-      setEditingText('');
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      submitEdit();
+    } else if (e.key === "Escape") {
+      cancelEdit();
     }
   };
 
@@ -106,16 +46,8 @@ export function TodoItem({
   return (
     <div
       ref={ref}
-      style={{ opacity }}
-      data-handler-id={handlerId}
       className="flex items-center gap-3 p-4 group hover:bg-gray-50 transition-colors"
     >
-      <div
-        ref={drag}
-        className="cursor-move opacity-0 group-hover:opacity-100 transition-opacity text-gray-400 hover:text-gray-600"
-      >
-        <GripVertical size={16} />
-      </div>
       
       <Checkbox
         checked={todo.completed}
@@ -129,8 +61,8 @@ export function TodoItem({
           type="text"
           value={editingText}
           onChange={(e) => setEditingText(e.target.value)}
-          onKeyDown={handleEditKeyPress}
-          onBlur={handleEditSubmit}
+          onKeyDown={handleKeyDown}
+          onBlur={submitEdit}
           className="flex-1 text-lg border-0 shadow-none focus-visible:ring-1 focus-visible:ring-blue-500 px-2 py-1 rounded"
         />
       ) : (

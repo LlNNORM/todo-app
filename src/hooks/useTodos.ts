@@ -1,112 +1,65 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
-
-export type Todo = {
-  id: number;
-  text: string;
-  completed: boolean;
-  order: number;
-};
-
-export type Filter = "all" | "active" | "completed";
+import { useState, useEffect } from 'react';
+import { TODO_LIST_STORAGE_KEY, saveToLocalStorage, loadFromLocalStorage } from '../utils/localStorage';
+import type { Todo } from '../types';
 
 export function useTodos() {
-  const [todos, setTodos] = useState<Todo[]>([]);
-  const [filter, setFilter] = useState<Filter>("all");
+  const [todos, setTodos] = useState<Todo[]>(() => {
+    const todoList = loadFromLocalStorage<Todo[]>(TODO_LIST_STORAGE_KEY) || [];
+    return todoList.map((todo: any, index: number) => ({
+      ...todo,
+      order: todo.order ?? index,
+    })).sort((a: Todo, b: Todo) => a.order - b.order);
+  });
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editingText, setEditingText] = useState("");
 
-  // загрузка из localStorage
   useEffect(() => {
-    try {
-      const savedTodos = localStorage.getItem("todos");
-      const savedFilter = localStorage.getItem("filter") as Filter | null;
+    saveToLocalStorage(TODO_LIST_STORAGE_KEY, todos);
+  }, [todos]);
 
-      if (savedTodos) {
-        const parsed: Todo[] = JSON.parse(savedTodos);
-        setTodos(parsed);
-      }
-      if (savedFilter) setFilter(savedFilter);
-    } catch (err) {
-      console.error("Ошибка загрузки из localStorage", err);
+  const toggleTodo = (id: number) => {
+    setTodos(todos.map(todo =>
+      todo.id === id ? { ...todo, completed: !todo.completed } : todo
+    ));
+  };
+
+  const deleteTodo = (id: number) => {
+    setTodos(todos.filter(todo => todo.id !== id));
+  };
+
+  const editTodo = (id: number, newText: string) => {
+    setTodos(todos.map(todo =>
+      todo.id === id ? { ...todo, text: newText } : todo
+    ));
+  };
+
+  const startEdit = (id: number, text: string) => {
+    setEditingId(id);
+    setEditingText(text);
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setEditingText("");
+  };
+
+  const submitEdit = () => {
+    if (editingId !== null && editingText.trim() !== "") {
+      editTodo(editingId, editingText.trim());
     }
-  }, []);
+    cancelEdit();
+  };
 
-  // сохранение в localStorage
-  useEffect(() => {
-    localStorage.setItem("todos", JSON.stringify(todos));
-    localStorage.setItem("filter", filter);
-  }, [todos, filter]);
-
-  const addTodo = useCallback((text: string) => {
-    setTodos(prev => [
-      ...prev,
-      { id: Date.now(), text, completed: false, order: prev.length }
-    ]);
-  }, []);
-
-  const toggleTodo = useCallback((id: number) => {
-    setTodos(prev =>
-      prev.map(todo =>
-        todo.id === id ? { ...todo, completed: !todo.completed } : todo
-      )
-    );
-  }, []);
-
-  const deleteTodo = useCallback((id: number) => {
-    setTodos(prev => prev.filter(todo => todo.id !== id));
-  }, []);
-
-  const updateTodo = useCallback((id: number, newText: string) => {
-    setTodos(prev =>
-      prev.map(todo => (todo.id === id ? { ...todo, text: newText } : todo))
-    );
-  }, []);
-
-  const clearCompleted = useCallback(() => {
-    setTodos(prev => prev.filter(todo => !todo.completed));
-  }, []);
-
-  const moveTodo = useCallback((from: number, to: number) => {
-    setTodos(prev => {
-      const updated = [...prev];
-      const [moved] = updated.splice(from, 1);
-      updated.splice(to, 0, moved);
-      return updated.map((t, i) => ({ ...t, order: i }));
-    });
-  }, []);
-
-  // фильтрация
-  const filteredTodos = useMemo(() => {
-    switch (filter) {
-      case "active":
-        return todos.filter(t => !t.completed);
-      case "completed":
-        return todos.filter(t => t.completed);
-      default:
-        return todos;
-    }
-  }, [todos, filter]);
-
-  const activeCount = useMemo(
-    () => todos.filter(t => !t.completed).length,
-    [todos]
-  );
-
-  const completedCount = useMemo(
-    () => todos.filter(t => t.completed).length,
-    [todos]
-  );
-
-  return {
+    return {
     todos,
-    filteredTodos,
-    filter,
-    setFilter,
-    addTodo,
+    setTodos,
     toggleTodo,
     deleteTodo,
-    updateTodo,
-    clearCompleted,
-    moveTodo,
-    activeCount,
-    completedCount
+    editingId,
+    editingText,
+    setEditingText,
+    startEdit,
+    cancelEdit,
+    submitEdit,
   };
 }
