@@ -1,14 +1,24 @@
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
+import { defineConfig } from "vitest/config"; // <- важно: из vitest/config
+import react from "@vitejs/plugin-react";
 import tailwindcss from '@tailwindcss/vite';
-// https://vite.dev/config/
+
 export default defineConfig({
   plugins: [react(), tailwindcss(),],
+
+  // Настройки Vitest
   test: {
-    globals: true,            // чтобы не писать import { describe, it } from 'vitest'
-    environment: "jsdom",     // эмулируем браузерное окружение
-    setupFiles: "./src/setupTests.ts", // хук перед тестами
+    globals: true,           // использовать глобальные функции типа `describe`/`it`
+    environment: "jsdom",    // для тестирования компонентов React
+    coverage: {
+      provider: "v8",        // сбор покрытия через v8
+      reporter: ["text", "html"], // отчеты в консоль и html
+    },
   },
-})
 
-
+  // Настройки Vite
+  resolve: {
+    alias: {
+      "@": "/src",
+    },
+  },
+});
