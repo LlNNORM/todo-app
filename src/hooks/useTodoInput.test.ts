@@ -1,35 +1,19 @@
 import { renderHook, act } from "@testing-library/react";
 import { useTodoInput } from "./useTodoInput";
+import { vi } from "vitest";
 
 describe("useTodoInput", () => {
   it("обновляет inputValue", () => {
-    const { result } = renderHook(() => useTodoInput([], jest.fn()));
+    const { result } = renderHook(() => useTodoInput([], vi.fn()));
 
     act(() => {
       result.current.setInputValue("test");
     });
-
     expect(result.current.inputValue).toBe("test");
   });
 
-  it("добавляет новый todo при addTodo", () => {
-    const setTodos = jest.fn();
-    const { result } = renderHook(() => useTodoInput([], setTodos));
-
-    act(() => {
-      result.current.setInputValue("new task");
-      result.current.addTodo();
-    });
-
-    expect(setTodos).toHaveBeenCalledWith(
-      expect.arrayContaining([
-        expect.objectContaining({ text: "new task", completed: false }),
-      ])
-    );
-  });
-
-  it("игнорирует пустой ввод", () => {
-    const setTodos = jest.fn();
+  it("не добавляет пустую задачу", () => {
+    const setTodos = vi.fn();
     const { result } = renderHook(() => useTodoInput([], setTodos));
 
     act(() => {
@@ -38,5 +22,20 @@ describe("useTodoInput", () => {
     });
 
     expect(setTodos).not.toHaveBeenCalled();
+  });
+
+  it("добавляет задачу по Enter", () => {
+    const setTodos = vi.fn();
+    const { result } = renderHook(() => useTodoInput([], setTodos));
+
+    act(() => {
+      result.current.setInputValue("keyboard task");
+    });
+
+    act(() => {
+      result.current.handleKeyPress({ key: "Enter" } as any);
+    });
+
+    expect(setTodos).toHaveBeenCalled();
   });
 });

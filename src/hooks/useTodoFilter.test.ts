@@ -1,31 +1,43 @@
 import { renderHook, act } from "@testing-library/react";
 import { useTodoFilter } from "./useTodoFilter";
-
-const todos = [
-  { id: 1, text: "Active", completed: false, order: 0 },
-  { id: 2, text: "Done", completed: true, order: 1 },
-];
+import type { Todo } from "../types";
+import * as storage from "../utils/localStorage";
+import { vi } from "vitest";
 
 describe("useTodoFilter", () => {
-  it("по умолчанию фильтр 'all'", () => {
+  const todos: Todo[] = [
+    { id: 1, text: "task1", completed: false, order: 0 },
+    { id: 2, text: "task2", completed: true, order: 1 },
+  ];
+
+  beforeEach(() => {
+    vi.spyOn(storage, "loadFromLocalStorage").mockReturnValue(null);
+    vi.spyOn(storage, "saveToLocalStorage").mockImplementation(() => {});
+  });
+
+  it("по умолчанию устанавливает фильтр all", () => {
     const { result } = renderHook(() => useTodoFilter(todos));
     expect(result.current.filter).toBe("all");
-  });
-
-  it("возвращает все todos при фильтре all", () => {
-    const { result } = renderHook(() => useTodoFilter(todos));
     expect(result.current.getFilteredTodos()).toHaveLength(2);
   });
-  
-  it("возвращает только активные", () => {
+
+  it("фильтрует только active", () => {
     const { result } = renderHook(() => useTodoFilter(todos));
-    act(() => result.current.setFilter("active"));
-    expect(result.current.getFilteredTodos()).toEqual([todos[0]]);
+    act(() => {
+      result.current.setFilter("active");
+    });
+    expect(result.current.getFilteredTodos()).toEqual([
+      expect.objectContaining({ id: 1 }),
+    ]);
   });
 
-  it("возвращает только завершённые", () => {
+  it("фильтрует только completed", () => {
     const { result } = renderHook(() => useTodoFilter(todos));
-    act(() => result.current.setFilter("completed"));
-    expect(result.current.getFilteredTodos()).toEqual([todos[1]]);
+    act(() => {
+      result.current.setFilter("completed");
+    });
+    expect(result.current.getFilteredTodos()).toEqual([
+      expect.objectContaining({ id: 2 }),
+    ]);
   });
 });

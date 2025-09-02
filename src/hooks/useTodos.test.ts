@@ -1,47 +1,65 @@
 import { renderHook, act } from "@testing-library/react";
 import { useTodos } from "./useTodos";
+import type { Todo } from "../types";
+import * as storage from "../utils/localStorage";
+import { vi } from "vitest";
 
 describe("useTodos", () => {
-  it("должен инициализироваться пустым списком", () => {
-    const { result } = renderHook(() => useTodos());
-    expect(result.current.todos).toEqual([]);
+  const initialTodos: Todo[] = [
+    { id: 1, text: "task1", completed: false, order: 0 },
+    { id: 2, text: "task2", completed: true, order: 1 },
+  ];
+
+  beforeEach(() => {
+    vi.spyOn(storage, "loadFromLocalStorage").mockReturnValue(initialTodos);
+    vi.spyOn(storage, "saveToLocalStorage").mockImplementation(() => {});
   });
 
-  it("должен добавлять новый todo", () => {
+  it("загружает задачи из localStorage", () => {
     const { result } = renderHook(() => useTodos());
-
-    act(() => {
-      result.current.setTodos([{ id: 1, text: "Test", completed: false, order: 0 }]);
-    });
-
-    expect(result.current.todos.length).toBe(1);
-    expect(result.current.todos[0].text).toBe("Test");
+    expect(result.current.todos).toHaveLength(2);
   });
 
-  it("должен переключать completed у todo", () => {
+  it("переключает completed", () => {
     const { result } = renderHook(() => useTodos());
-    act(() => {
-      result.current.setTodos([{ id: 1, text: "Test", completed: false, order: 0 }]);
-    });
-
     act(() => {
       result.current.toggleTodo(1);
     });
-
-    expect(result.current.todos[0].completed).toBe(true);
+    expect(result.current.todos.find(t => t.id === 1)?.completed).toBe(true);
   });
 
-  it("должен удалять todo", () => {
+  it("удаляет задачу", () => {
     const { result } = renderHook(() => useTodos());
     act(() => {
-      result.current.setTodos([{ id: 1, text: "Delete me", completed: false, order: 0 }]);
+      result.current.deleteTodo(2);
     });
-
-    act(() => {
-      result.current.deleteTodo(1);
-    });
-
-    expect(result.current.todos.length).toBe(0);
+    expect(result.current.todos).toHaveLength(1);
   });
 
+  it("начинает и отменяет редактирование", () => {
+    const { result } = renderHook(() => useTodos());
+    act(() => {
+      result.current.startEdit(1, "edit");
+    });
+    expect(result.current.editingId).toBe(1);
+    expect(result.current.editingText).toBe("edit");
+
+    act(() => {
+      result.current.cancelEdit();
+    });
+    expect(result.current.editingId).toBeNull();
+    expect(result.current.editingText).toBe("");
+  });
+
+  it("сохраняет изменения при submitEdit", () => {
+    const { result } = renderHook(() => useTodos());
+    act(() => {
+      result.current.startEdit(1, "new text");
+    });
+    act(() => {
+    result.current.submitEdit();
+    });
+    expect(result.current.todos.find(t => t.id === 1)?.text).toBe("new text");
+    expect(result.current.editingId).toBeNull();
+  });
 });
